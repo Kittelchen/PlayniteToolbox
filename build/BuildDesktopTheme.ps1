@@ -40,9 +40,19 @@ if (-not (Test-Path -LiteralPath $OutputDirectory -PathType Container)) {
 }
 
 Write-Host "Packaging theme from '$ThemeDirectory'..."
+$packStartedAt = Get-Date
 & $ToolboxPath pack $ThemeDirectory $OutputDirectory
 if ($LASTEXITCODE -ne 0) {
     throw "Toolbox pack failed with exit code $LASTEXITCODE."
 }
 
-Write-Host "Theme package output: '$OutputDirectory'"
+$package = Get-ChildItem -LiteralPath $OutputDirectory -Filter '*.pthm' -File |
+    Where-Object { $_.LastWriteTime -ge $packStartedAt } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+if (-not $package) {
+    throw "Toolbox pack completed, but no newly built .pthm package was found in '$OutputDirectory'."
+}
+
+Write-Host "Theme package created: '$($package.FullName)'"
+Start-Process -FilePath $package.FullName
